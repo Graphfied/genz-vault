@@ -2,47 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useReducer, useEffect } from "react"
-
-interface User {
-  id: string
-  name: string
-  email: string
-  type: "parent" | "child"
-  parentId?: string
-  avatar?: string
-  age?: number
-}
-
-interface Child {
-  id: string
-  name: string
-  age: number
-  avatar: string
-  balance: number // Main balance
-  parentId: string
-  savingsGoal?: {
-    title: string
-    target: number
-    current: number
-  } | null // Allow null for savingsGoal
-  cardDesign: {
-    emoji: string
-    background: string
-    name: string
-  }
-  internalWalletBalance: number // Pocket money
-}
-
-export interface Task {
-  // Exporting Task interface
-  id: string
-  title: string
-  description: string
-  reward: number
-  childId: string
-  completed: boolean
-  createdAt: string
-}
+import type { User, Child, Task } from "@/types" // Import from types.ts
 
 interface AppState {
   currentUser: User | null
@@ -60,10 +20,10 @@ type AppAction =
   | { type: "COMPLETE_TASK"; payload: string }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "LOAD_DATA"; payload: Partial<AppState> }
-  | { type: "TOPUP_INTERNAL_WALLET"; payload: { childId: string; amount: number } } // Parent adds to child's pocket money
-  | { type: "PARENT_DEPOSIT_TO_CHILD_MAIN_BALANCE"; payload: { childId: string; amount: number } } // Parent adds to child's main balance
-  | { type: "WITHDRAW_FROM_CHILD_BALANCE"; payload: { childId: string; amount: number } } // Parent withdraws from child's main balance
-  | { type: "DEPOSIT_TO_MAIN_WALLET"; payload: { childId: string; amount: number } } // Child moves from pocket money to main
+  | { type: "TOPUP_INTERNAL_WALLET"; payload: { childId: string; amount: number } }
+  | { type: "PARENT_DEPOSIT_TO_CHILD_MAIN_BALANCE"; payload: { childId: string; amount: number } }
+  | { type: "WITHDRAW_FROM_CHILD_BALANCE"; payload: { childId: string; amount: number } }
+  | { type: "DEPOSIT_TO_MAIN_WALLET"; payload: { childId: string; amount: number } }
   | { type: "PURCHASE_REWARD"; payload: { childId: string; cost: number; rewardName: string } }
 
 const initialState: AppState = {
@@ -101,20 +61,28 @@ function appReducer(state: AppState, action: AppAction): AppState {
         currentUser: action.payload.currentUser || null,
         tasks: action.payload.tasks || [],
         children: action.payload.children
-          ? action.payload.children.map((child: any) => ({
-              ...child,
-              balance: child.balance || 0,
-              internalWalletBalance: child.internalWalletBalance || 0,
-              cardDesign: child.cardDesign || {
-                emoji: child.avatar || "👦",
-                background: "bg-gradient-to-br from-blue-400 to-purple-500",
-                name: child.name || "Child Name",
-              },
-              savingsGoal: child.savingsGoal || null,
-            }))
+          ? action.payload.children.map(
+              (child: any) =>
+                ({
+                  // Use 'any' here for loaded data before validation
+                  id: child.id,
+                  name: child.name || "Child Name",
+                  age: child.age || 0,
+                  avatar: child.avatar || "👦",
+                  balance: child.balance || 0,
+                  parentId: child.parentId || "",
+                  internalWalletBalance: child.internalWalletBalance || 0,
+                  cardDesign: child.cardDesign || {
+                    emoji: child.avatar || "👦",
+                    background: "bg-gradient-to-br from-blue-400 to-purple-500",
+                    name: child.name || "Child Name",
+                  },
+                  savingsGoal: child.savingsGoal || null,
+                }) as Child,
+            ) // Cast to Child after applying defaults
           : [],
       }
-    case "TOPUP_INTERNAL_WALLET": // Parent adds to child's pocket money
+    case "TOPUP_INTERNAL_WALLET":
       return {
         ...state,
         children: state.children.map((child) =>
@@ -123,7 +91,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             : child,
         ),
       }
-    case "PARENT_DEPOSIT_TO_CHILD_MAIN_BALANCE": // Parent adds to child's main balance
+    case "PARENT_DEPOSIT_TO_CHILD_MAIN_BALANCE":
       return {
         ...state,
         children: state.children.map((child) =>
@@ -132,7 +100,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             : child,
         ),
       }
-    case "WITHDRAW_FROM_CHILD_BALANCE": // Parent withdraws from child's main balance
+    case "WITHDRAW_FROM_CHILD_BALANCE":
       return {
         ...state,
         children: state.children.map((child) =>
@@ -141,7 +109,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             : child,
         ),
       }
-    case "DEPOSIT_TO_MAIN_WALLET": // Child moves from pocket money to main
+    case "DEPOSIT_TO_MAIN_WALLET":
       return {
         ...state,
         children: state.children.map((child) => {
